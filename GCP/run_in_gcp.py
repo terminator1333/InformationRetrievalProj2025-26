@@ -4,7 +4,6 @@ import time
 import statistics
 
 # ================= CONFIGURATION =================
-# ERROR PREVENTION: Check if your Flask app uses '/search', '/search_body', etc.
 URL = 'http://127.0.0.1:8080/search' 
 QUERY_FILE = 'queries_train.json'
 # =================================================
