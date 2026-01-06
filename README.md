@@ -58,7 +58,7 @@ This is our project for the Information Retrieval course, where we built a runni
 
 The search engine is viable for the entire English Wikipedia corpus up to Aug 2021
 
-<img width="2816" height="1536" alt="Gemini_Generated_Image_9fzh2i9fzh2i9fzh" src="https://github.com/user-attachments/assets/06d415ee-504b-41b0-b83b-935a80854a03" />
+
 
 
 A bit on the given files in this repo: 
@@ -95,4 +95,7 @@ How to use (from scratch):
     - Upload search_backend.py, search_frontend.py, queries_train.py, run_testing_gcp.py
     - Run search_frontend.py
     - Run run_testing_gcp.py
-    - FOR SPECIFIC QUERIES PLEASE NAVIGATE TO http://localhost:8080/search?query=your+query (remove 'your+query' with the actual queries, but replace spaces with pluses ('+')
+    - FOR SPECIFIC QUERIES PLEASE NAVIGATE TO http://localhost:8080/search?query=your+query (remove 'your+query' with the actual queries, but replace spaces with pluses('+')
+
+
+<img width="2816" height="1536" alt="Gemini_Generated_Image_9fzh2i9fzh2i9fzh" src="https://github.com/user-attachments/assets/06d415ee-504b-41b0-b83b-935a80854a03" />
