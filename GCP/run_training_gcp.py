@@ -13,7 +13,7 @@ def calculate_metrics(retrieved_ids, true_ids):
     if not retrieved_ids:
         return 0, 0
     
-    # K is the number of results returned (usually 10, 20, or 100)
+    # K is the number of results returned
     K = len(retrieved_ids) 
     
     # Intersection: How many retrieved docs are actually relevant?
