@@ -93,9 +93,13 @@ How to use (from scratch):
   - For GCP:
     - Initialise VM using run_frontend_in_gcp, startup_script_gcp.sh, change_vm_to_venv.sh
     - Upload search_backend.py, search_frontend.py, queries_train.py, run_testing_gcp.py
-    - Run search_frontend.py
+    - Run search_frontend.py (downloads the files locally)
     - Run run_testing_gcp.py
     - FOR SPECIFIC QUERIES PLEASE NAVIGATE TO http://localhost:8080/search?query=your+query (remove 'your+query' with the actual queries, but replace spaces with pluses('+')
+How to use the VM:
+- Upload search_backend.py, search_frontend.py, queries_train.py, run_testing_gcp.py
+- Run search_frontend.py
+- Run run_testing_gcp.py
 
 
 <img width="2816" height="1536" alt="Gemini_Generated_Image_9fzh2i9fzh2i9fzh" src="https://github.com/user-attachments/assets/06d415ee-504b-41b0-b83b-935a80854a03" />
