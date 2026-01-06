@@ -24,10 +24,8 @@
                             \ \ \/  \ \ \\ \\ \ \_\ \/\ \_\ \ \ \L\ \ \ \ \                                                        
                              \ \_\   \ \_\ \_\ \_____\ \____/\ \____/  \ \_\                                                       
                               \/_/    \/_/\/ /\/_____/\/___/  \/___/    \/_/ 
-```
 
-                                                                                                                                                                    
-                                                                                                                                                                    
+                                                                                                                                                                 
                             _..._
                           \_.._ `'-.,--,
                            '-._'-.  `\a\\
@@ -51,11 +49,11 @@
    (__.'/   /` .'`
     (_.'/ /` /`
       _|.' /`
-jgs.-` __.'|
+   .-` __.'|
     .-'||  |
        \_`/
          `                                                                                                                                                                   
-
+```
 This is our project for the Information Retrieval course, where we built a running search engine both in colab and in GCP via a VM.
 
 The search engine is viable for the entire English Wikipedia corpus up to Aug 2021
