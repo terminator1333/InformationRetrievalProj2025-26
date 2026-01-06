@@ -82,7 +82,7 @@ A bit on the given files in this repo:
 
 
 How are the indexes created: 
-  In the search frontend script, we create an instance of the backend class. This downloads all the files to the local machine, with the efforts of saving search time. This is done using the client feature in google-cloud-console
+- In the search frontend script, we create an instance of the backend class. This downloads all the files to the local machine, with the efforts of saving search time. This is done using the client feature in google-cloud-console
 
 
 How to use (from scratch): 
@@ -96,6 +96,8 @@ How to use (from scratch):
     - Run search_frontend.py (downloads the files locally)
     - Run run_testing_gcp.py
     - FOR SPECIFIC QUERIES PLEASE NAVIGATE TO http://localhost:8080/search?query=your+query (remove 'your+query' with the actual queries, but replace spaces with pluses('+')
+
+
 How to use the VM:
 - Upload search_backend.py, search_frontend.py, queries_train.py, run_testing_gcp.py
 - Run search_frontend.py
