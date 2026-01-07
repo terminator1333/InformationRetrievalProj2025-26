@@ -6,6 +6,7 @@ import statistics
 # ================= CONFIGURATION =================
 URL = 'http://127.0.0.1:8080/search' 
 QUERY_FILE = 'queries_train.json'
+USE_COS_SIM = True  # <--- Toggle this to True/False to test different modes
 # =================================================
 
 def calculate_metrics(retrieved_ids, true_ids):
@@ -13,10 +14,8 @@ def calculate_metrics(retrieved_ids, true_ids):
     if not retrieved_ids:
         return 0, 0
     
-    # K is the number of results returned
     K = len(retrieved_ids) 
     
-    # Intersection: How many retrieved docs are actually relevant?
     relevant_retrieved = len(set(retrieved_ids).intersection(set(true_ids)))
     
     precision = relevant_retrieved / K
@@ -32,7 +31,8 @@ def run_benchmark():
         print(f"Error: Could not find {QUERY_FILE}")
         return
 
-    print(f"Loaded {len(queries_data)} queries. Starting benchmark on {URL}...\n")
+    mode_str = " (Cosine Similarity)" if USE_COS_SIM else " (BM25/Default)"
+    print(f"Loaded {len(queries_data)} queries. Starting benchmark on {URL}{mode_str}...\n")
     print(f"{'Query':<30} | {'Lat (ms)':<10} | {'Prec':<6} | {'Recall':<6}")
     print("-" * 65)
 
@@ -41,15 +41,18 @@ def run_benchmark():
     recalls = []
 
     for query, true_ids in queries_data.items():
-        # Normalize true_ids to strings to ensure matching works
         true_ids = [str(x) for x in true_ids]
         
         start_time = time.time()
         try:
-            # Send request to your Flask server
-            response = requests.get(URL, params={'query': query})
+            # === UPDATED REQUEST ===
+            # We now pass 'use_cos_sim' as a query parameter
+            params = {
+                'query': query,
+                'use_cos_sim': 'true' if USE_COS_SIM else 'false' 
+            }
+            response = requests.get(URL, params=params)
             
-            # Stop timer
             end_time = time.time()
             duration_ms = (end_time - start_time) * 1000
             latencies.append(duration_ms)
@@ -57,22 +60,18 @@ def run_benchmark():
             if response.status_code == 200:
                 results = response.json()
                 
-                # Handling different return formats:
-                # 1. If it returns a list of IDs: [1, 2, 3]
-                # 2. If it returns a list of tuples: [[1, "title"], [2, "title"]]
                 retrieved_ids = []
                 if isinstance(results, list):
                     for item in results:
                         if isinstance(item, list) or isinstance(item, tuple):
-                            retrieved_ids.append(str(item[0])) # Take first element (ID)
+                            retrieved_ids.append(str(item[0])) 
                         else:
-                            retrieved_ids.append(str(item)) # Take raw ID
+                            retrieved_ids.append(str(item)) 
                 
                 p, r = calculate_metrics(retrieved_ids, true_ids)
                 precisions.append(p)
                 recalls.append(r)
                 
-                # Print short summary for this query (truncated)
                 print(f"{query[:28]:<30} | {duration_ms:>8.2f} | {p:>6.2f} | {r:>6.2f}")
             
             else:
@@ -83,9 +82,8 @@ def run_benchmark():
             print("Is it running? (python3 search_frontend.py)")
             return
 
-    # FINAL SUMMARY
     print("\n" + "="*30)
-    print("       BENCHMARK RESULTS       ")
+    print("        BENCHMARK RESULTS        ")
     print("="*30)
     if latencies:
         print(f"Total Queries:    {len(latencies)}")
