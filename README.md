@@ -76,7 +76,7 @@ A bit on the given files in this repo:
   - create_pageviews.ipynb -> script for creating pageviews data in the bucket. Ran on Google Colab
   - run_frontend_in_gcp.sh -> script for initiating VM
   - startup_script_gcp.sh -> script for helping run_frontend_in_gcp initiate VM
-  - change_vm_to_venv.sh -> Since all the libraries are stored in virtual environment, this is a script to initialise the venv activation automatically
+  - run_server.sh -> Since all the libraries are stored in virtual environment, this is a script to initialise the venv activation automatically using bashrc
   - optimize_weights.py -> Doing a grid search to find best hyperparams. Using 20/30 of given queries
   - run_testing_gcp.py -> Script for testing all given queries
 - Colab/
