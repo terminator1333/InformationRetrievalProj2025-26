@@ -162,9 +162,9 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
 
         scores = defaultdict(float) #the scores for relevant documents
         threshold_df = 80000  #a threshold for the df to ease on runtime
-
+        token_dfs = {t: self.body_index.df[t] for t in query_counts if t in self.body_index.df} #the dfs of the tokens
         if not any(token in self.body_index.df and self.body_index.df[token] <= threshold_df for token in query_counts): #incase no tokens are under the threshold, we increase it
-            threshold_df = 400000
+            threshold_df = min(token_dfs.values())
         
         query_counts = Counter(tokens) #using a counter for getting metrics
 
@@ -238,7 +238,7 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
                     scores[doc_id] += 1 #adding 1 to the score of that document
         return sorted(scores.items(), key=lambda x: x[1], reverse=True) #returning all documents
 
-    def search(self, query, w_title=1.0, w_anchor=0.5, w_body=1.0, w_pr=0.1,w_pv=0.1):
+    def search(self, query, w_title=1.0, w_anchor=0.5, w_body=1.0, w_pr=0.1,w_pv=0.1, use_cos_sim=False):
         """
         Main search function. Here we execute the search logic by combining scores from 
         multiple indices and the ranking boosters which are pagerank and pageviews
@@ -267,12 +267,26 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
         for doc_id, count in anchor_counts.items():  #using log scaling for anchor to prevent spam (from experience, 'Mount Everest')
             merged_scores[doc_id] += w_anchor * math.log(1 + count, 10)
 
+        body_scores = defaultdict(float) #we need to calculate the body scores separately to combine them later
         threshold_df = 80000 #skipping very common words to save time
-
+        token_dfs = {t: self.body_index.df[t] for t in query_counts if t in self.body_index.df} 
         if not any(token in self.body_index.df and self.body_index.df[token] <= threshold_df for token in query_counts): #incase no tokens are under the threshold, we increase it
-            threshold_df = 400000
+            threshold_df = min(token_dfs.values()) if token_dfs else 80000
         
         query_counts = Counter(tokens) #same functionality as the search body but without returning top 100
+
+        query_norm = 0.0
+
+        if use_cos_sim:
+            for token, q_tf in query_counts.items():
+                if token in self.body_index.df:
+                    df = self.body_index.df[token]
+                    if df > threshold_df: continue
+                    idf = math.log(self.N / df, 10)
+                    w_query = q_tf * idf
+                    query_norm += w_query**2
+            query_norm = math.sqrt(query_norm)
+
         for token, q_tf in query_counts.items(): #for each token and the amount of times it shows up in the query, do the following
             if token in self.body_index.df: #incase the token is in the body index df
                 df = self.body_index.df[token] #get the df of that token
@@ -283,9 +297,26 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
                 pl = self._get_posting_list(self.body_index, token) #the postinglist of the token
                 idf = math.log(self.N / df, 10) #get the idf of the token
                 
-                for doc_id, tf in pl: #for each doc and its tf in the posting list of the token
-                    score = (tf / (tf + 1.2)) * idf * q_tf #calculate the following, which is the bm25 lite saturation formula
-                    merged_scores[doc_id] += (score)
+                if use_cos_sim:
+                    w_query = q_tf * idf
+                    for doc_id, tf in pl: #for each doc and its tf in the posting list of the token
+                        w_doc = tf * idf
+                        body_scores[doc_id] += w_query * w_doc #addomg to body_scores, NOT merged_scores yet
+                else:
+                    for doc_id, tf in pl: #for each doc and its tf in the posting list of the token
+                        score = (tf / (tf + 1.2)) * idf * q_tf #calculate the following, which is the bm25 lite saturation formula
+                        # --- FIX: Add to body_scores, NOT merged_scores yet
+                        body_scores[doc_id] += score
+        if use_cos_sim and query_norm > 0:
+            for doc_id, score in body_scores.items():
+                doc_norm = self.doc_norms.get(doc_id, 0)
+                if doc_norm > 0:
+                    # Apply Normalization AND Weight
+                    merged_scores[doc_id] += (score / (query_norm * doc_norm)) * w_body
+        else:
+            #standard weighted sum (BM25)
+            for doc_id, score in body_scores.items():
+                 merged_scores[doc_id] += score * w_body
 
         for doc_id in merged_scores.keys(): #getting the pagerank (pr) and pageview (pv) of the document for all the found docs with logarithmic scaling
             pr = self.pagerank.get(doc_id, 0)
