@@ -7,6 +7,7 @@ from google.cloud import storage
 from inverted_index_gcp import InvertedIndex
 import nltk
 from nltk.corpus import stopwords
+import gc
 
 import gzip, csv #for pagerank
 
@@ -22,18 +23,32 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
         print("Loading indices...")
         self.body_index = InvertedIndex.read_index('postings_gcp_body', 'index_body') #Inverted Index for the body
         self.body_index.base_dir = 'postings_gcp_body' # for getting the correct path
+        gc.collect()
         self.title_index = InvertedIndex.read_index('postings_gcp_title', 'index_title') #Inverted Index for the title
         self.title_index.base_dir = 'postings_gcp_title' #for getting the correct path
+        gc.collect()
         self.anchor_index = InvertedIndex.read_index('postings_gcp_anchor', 'index_anchor') #Inverted Index for the anchor
         self.anchor_index.base_dir = 'postings_gcp_anchor' #for getting the correct path
+        gc.collect()
 
+        
+        if os.path.exists('norms.pkl'): #loading the norms pickle file if it exists
+            with open('norms.pkl', 'rb') as f:
+                self.doc_norms = pickle.load(f)
+            print(f"Loaded norms for {len(self.doc_norms)} documents.")
+        else:
+            self.doc_norms = {}
+            print("Warning: norms.pkl not found. Cosine Similarity will not be normalized.")
+        gc.collect()
         with open('doc_title_mapping.pkl', 'rb') as f: #setting the doc title mapping pickle to a variable 
             self.doc_title = pickle.load(f)
+        gc.collect()
         if os.path.exists('pageviews.pkl'): #setting the pageviews pickle to a variable
             with open('pageviews.pkl', 'rb') as f:
                 self.pageviews = pickle.load(f)
         else:
             self.pageviews = {}
+        gc.collect()
 
         self.pagerank = self._load_pagerank('pr') #loading the pagerank using private method
         self.N = len(self.doc_title) #getting the number of documents
@@ -50,25 +65,26 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
             ('postings_gcp_title/index_title.pkl', 'postings_gcp_title/index_title.pkl'),
             ('postings_gcp_anchor/index_anchor.pkl', 'postings_gcp_anchor/index_anchor.pkl'),
             ('doc_title_mapping.pkl', 'doc_title_mapping.pkl'),
-            ('pageviews.pkl', 'pageviews.pkl')
+            ('pageviews.pkl', 'pageviews.pkl'),
+            ('norms.pkl', 'norms.pkl') # the norms file (normalized values for cossim)
         ]
         
         for remote, local in files: #going through each pickle file, and downloading it
             self._download_file(remote, local)
 
-        if not os.path.exists('postings_gcp_title') or not os.listdir('postings_gcp_title'): #downloading the title .bin files. We check if the folder exists and if it has files inside
+        if not os.path.exists('postings_gcp_title') or not any(fname.endswith('.bin') for fname in os.listdir('postings_gcp_title')): #downloading the title .bin files. We check if the folder exists and if it has files inside
              print("Downloading Title Index")
              self._download_folder('postings_gcp_title/')
         else:
              print("Title Index found locally. Skipping download.")
 
-        if not os.path.exists('postings_gcp_anchor') or not os.listdir('postings_gcp_anchor'):#downloading the anchor .bin files. We check if the folder exists and if it has files inside
+        if not os.path.exists('postings_gcp_anchor') or not any(fname.endswith('.bin') for fname in os.listdir('postings_gcp_anchor')):#downloading the anchor .bin files. We check if the folder exists and if it has files inside
             print("Downloading Anchor Index...")
             self._download_folder('postings_gcp_anchor/')
         else:
             print("Anchor Index found locally. Skipping download.")
         
-        if not os.path.exists('postings_gcp_body') or not os.listdir('postings_gcp_body'): #downloading the body .bin files. We check if the folder exists and if it has files inside
+        if not os.path.exists('postings_gcp_body') or not any(fname.endswith('.bin') for fname in os.listdir('postings_gcp_body')): #downloading the body .bin files. We check if the folder exists and if it has files inside
             print("Downloading Body Index...")
             self._download_folder('postings_gcp_body/')
         else:
@@ -146,8 +162,22 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
 
         scores = defaultdict(float) #the scores for relevant documents
         threshold_df = 80000  #a threshold for the df to ease on runtime
+
+        if not any(token in self.body_index.df and self.body_index.df[token] <= threshold_df for token in query_counts): #incase no tokens are under the threshold, we increase it
+            threshold_df = 400000
         
         query_counts = Counter(tokens) #using a counter for getting metrics
+
+        query_norm = 0.0
+        if use_cos_sim:
+            for token, q_tf in query_counts.items():
+                if token in self.body_index.df:
+                    df = self.body_index.df[token]
+                    if df > threshold_df: continue
+                    idf = math.log(self.N / df, 10)
+                    w_query = q_tf * idf
+                    query_norm += w_query**2
+            query_norm = math.sqrt(query_norm)
         
         for token, q_tf in query_counts.items(): #for each token and the amount of times it shows up in the query, do the following
             if token in self.body_index.df: #incase the token is in the body index df
@@ -173,6 +203,13 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
                     for doc_id, tf in pl: #for each doc and its tf in the posting list of the token
                         score = (tf / (tf + 1.2)) * idf * q_tf #calculate the following, which is the bm25 lite saturation formula
                         scores[doc_id] += (score)
+                if use_cos_sim and query_norm > 0:
+                    for doc_id in scores:
+                        doc_norm = self.doc_norms.get(doc_id, 0)
+                        if doc_norm > 0:
+                            scores[doc_id] /= (query_norm * doc_norm)
+                        else:
+                            scores[doc_id] = 0 # Handle docs with 0 norm (shouldn't happen but safe)
                     
         return sorted(scores.items(), key=lambda x: x[1], reverse=True)[:100] #return top 100 most relevant documents
 
@@ -231,6 +268,9 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
             merged_scores[doc_id] += w_anchor * math.log(1 + count, 10)
 
         threshold_df = 80000 #skipping very common words to save time
+
+        if not any(token in self.body_index.df and self.body_index.df[token] <= threshold_df for token in query_counts): #incase no tokens are under the threshold, we increase it
+            threshold_df = 400000
         
         query_counts = Counter(tokens) #same functionality as the search body but without returning top 100
         for token, q_tf in query_counts.items(): #for each token and the amount of times it shows up in the query, do the following
