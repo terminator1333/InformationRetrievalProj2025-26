@@ -96,7 +96,7 @@ How to use (from scratch):
     - Upload search_backend.py, search_frontend.py, queries_train.py, run_frontend_in_colab.ipynb
     - Run run_frontent_in_colab.ipynb
   - For GCP:
-    - Initialise VM using run_frontend_in_gcp, startup_script_gcp.sh, change_vm_to_venv.sh
+    - Initialise VM using run_frontend_in_gcp, startup_script_gcp.sh, run_server.sh
     - Upload search_backend.py, search_frontend.py, queries_train.py, run_testing_gcp.py
     - Run search_frontend.py (downloads the files locally)
     - Run run_testing_gcp.py
