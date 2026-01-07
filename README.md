@@ -74,6 +74,7 @@ A bit on the given files in this repo:
   - inverted_index_gcp.py -> helper script, has the Inverted Index class used when creating the Inverted Index and in the VM
   - gcp_create_inverted_indexes.ipynb -> script for creating the Inverted Indexes for the Title, Body, and Anchor, in addition to creating the Pagerank and doc-title mappings. Was run on a cluster in GCP
   - create_pageviews.ipynb -> script for creating pageviews data in the bucket. Ran on Google Colab
+  - create_doc_length_data.ipynb -> script for creating a doc length pickle for calculating cosine similarity. Ran on Colab
   - run_frontend_in_gcp.sh -> script for initiating VM
   - startup_script_gcp.sh -> script for helping run_frontend_in_gcp initiate VM
   - run_server.sh -> Since all the libraries are stored in virtual environment, this is a script to initialise the venv activation automatically using bashrc
@@ -91,7 +92,7 @@ How are the indexes created:
 
 
 How to use (from scratch): 
-- Create the inverted indexes, pageranks and pageviews
+- Create the inverted indexes, pagerank, pageviews and document lengths data
   - For Colab:
     - Upload search_backend.py, search_frontend.py, queries_train.py, run_frontend_in_colab.ipynb
     - Run run_frontent_in_colab.ipynb
