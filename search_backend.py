@@ -65,7 +65,7 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
         self.body_re_word = re.compile(r"""[\#\@\w](['\-]?\w){2,24}""", re.UNICODE)
 
         # ------------------ ASSIGNMENT 3 PROVIDED STOPWORDS & TOKENIZER ------------------
-        print("Backend ready")
+        print("Backend Ready")
 
     def _download_all_data(self):
         """
@@ -87,7 +87,7 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
              print("Downloading Title Index")
              self._download_folder('postings_gcp_title/')
         else:
-             print("Title Index found locally. Skipping download.")
+             print("Title Index found Locally. Skipping Download.")
 
         if not os.path.exists('postings_gcp_anchor') or not any(fname.endswith('.bin') for fname in os.listdir('postings_gcp_anchor')):#downloading the anchor .bin files. We check if the folder exists and if it has files inside
             print("Downloading Anchor Index...")
@@ -348,3 +348,4 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
             if pv > 0: merged_scores[doc_id] += w_pv * math.log(pv, 10)
 
         return sorted(merged_scores.items(), key=lambda x: x[1], reverse=True)[:100] #returning top 100 scores
+
