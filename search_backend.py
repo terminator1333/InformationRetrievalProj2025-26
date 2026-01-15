@@ -256,7 +256,7 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
                     scores[doc_id] += 1 #adding 1 to the score of that document
         return sorted(scores.items(), key=lambda x: (-x[1], x[0])) #returning all documents
 
-    def search(self, query, w_title=1.0, w_anchor=0.5, w_body=1.0, w_pr=0.1,w_pv=0.1, use_cos_sim=False):
+    def search(self, query, w_title=1.0, w_anchor=0.5, w_body=1.0, w_pr=0.1,w_pv=0.01, use_cos_sim=False):
         """
         Main search function. Here we execute the search logic by combining scores from 
         multiple indices and the ranking boosters which are pagerank and pageviews
@@ -348,4 +348,3 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
             if pv > 0: merged_scores[doc_id] += w_pv * math.log(pv, 10)
 
         return sorted(merged_scores.items(), key=lambda x: x[1], reverse=True)[:100] #returning top 100 scores
-
