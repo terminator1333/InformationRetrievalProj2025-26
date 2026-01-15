@@ -82,11 +82,15 @@ A bit on the given files in this repo:
   - run_server.sh -> Since all the libraries are stored in virtual environment, this is a script to initialise the venv activation automatically using bashrc
   - optimize_weights.py -> Doing a grid search to find best hyperparams. Using 20/30 of given queries
   - run_testing_gcp.py -> Script for testing all given queries
+  - get_requirements_metrics_test.py -> script for calculating MAP@5, MAP@10, AVG F1@30, as part of project requirements
+  - search_frontend_for_test_cos.py -> script for a different frontend, in order to switch to using Cosine Similarity instead of BM25 for the body index, in the search function
 - Colab/
   - run_frontend_in_colab.ipynb -> script for making sure the server works and testing different approaches
+  - check_POST_pageview_pagerank.ipynb -> script for checking get_pagerank, get_pageview
 - queries_train.json -> given queries to train. We mostly used a 20/10 split (20 for calibrating hyperparameters and 10 for testing)
 - search_backend.py -> main functionality of the project. Implements the different search functions
 - search_frontend.py -> frontend allowing communication between flask app and backend
+- presentation_github.pdf -> presentation for showing the project + steps
 
 
 How are the indexes created: 
