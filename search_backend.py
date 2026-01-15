@@ -54,6 +54,17 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
         self.N = len(self.doc_title) #getting the number of documents
         
         self.all_stopwords = frozenset(stopwords.words('english')) #the stopwords we will use
+
+        # ------------------ ASSIGNMENT 3 PROVIDED STOPWORDS & TOKENIZER ------------------
+        english_stopwords = frozenset(stopwords.words('english'))
+        corpus_stopwords = ["category", "references", "also", "external", "links",
+                    "may", "first", "see", "history", "people", "one", "two",
+                    "part", "thumb", "including", "second", "following",
+                    "many", "however", "would", "became"]
+        self.assignment3_stopwords = english_stopwords.union(corpus_stopwords)
+        self.body_re_word = re.compile(r"""[\#\@\w](['\-]?\w){2,24}""", re.UNICODE)
+
+        # ------------------ ASSIGNMENT 3 PROVIDED STOPWORDS & TOKENIZER ------------------
         print("Backend ready")
 
     def _download_all_data(self):
@@ -137,6 +148,13 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
         method for tokenizing a text, will be used to tokenize queries for the 'search' methods
         """
         return [t.group() for t in re.finditer(r'\w+', text.lower()) if t.group() not in self.all_stopwords]
+    
+    def tokenize_assignment3(self, text):
+        """
+        Specific tokenizer for search_body using Assignment 3 logic.
+        """
+        return [token.group() for token in self.body_re_word.finditer(text.lower()) 
+                if token.group() not in self.assignment3_stopwords]
 
     def _get_posting_list(self, index, token):
         """
@@ -153,20 +171,20 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
         """
         return [self.pageviews.get(int(doc_id), 0) for doc_id in wiki_ids]
 
-    def search_body(self, query, use_cos_sim=False):
+    def search_body(self, query, use_cos_sim=True):
         """
         method for searching the body inverted index given a query
         """
-        tokens = self.tokenize(query) #tokenize the queries
+        tokens = self.tokenize_assignment3(query) #tokenize the queries with assignment 3 tokenizer
         if not tokens: return [] #if smth went wrong return an empty list
 
         scores = defaultdict(float) #the scores for relevant documents
+        query_counts = Counter(tokens) #using a counter for getting metrics
         threshold_df = 80000  #a threshold for the df to ease on runtime
         token_dfs = {t: self.body_index.df[t] for t in query_counts if t in self.body_index.df} #the dfs of the tokens
         if not any(token in self.body_index.df and self.body_index.df[token] <= threshold_df for token in query_counts): #incase no tokens are under the threshold, we increase it
             threshold_df = min(token_dfs.values())
         
-        query_counts = Counter(tokens) #using a counter for getting metrics
 
         query_norm = 0.0
         if use_cos_sim:
@@ -203,13 +221,13 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
                     for doc_id, tf in pl: #for each doc and its tf in the posting list of the token
                         score = (tf / (tf + 1.2)) * idf * q_tf #calculate the following, which is the bm25 lite saturation formula
                         scores[doc_id] += (score)
-                if use_cos_sim and query_norm > 0:
-                    for doc_id in scores:
-                        doc_norm = self.doc_norms.get(doc_id, 0)
-                        if doc_norm > 0:
-                            scores[doc_id] /= (query_norm * doc_norm)
-                        else:
-                            scores[doc_id] = 0 # Handle docs with 0 norm (shouldn't happen but safe)
+        if use_cos_sim and query_norm > 0:
+            for doc_id in scores:
+                doc_norm = self.doc_norms.get(doc_id, 0)
+                if doc_norm > 0:
+                    scores[doc_id] /= (query_norm * doc_norm)
+                else:
+                    scores[doc_id] = 0 # Handle docs with 0 norm (shouldn't happen but safe)
                     
         return sorted(scores.items(), key=lambda x: x[1], reverse=True)[:100] #return top 100 most relevant documents
 
@@ -217,26 +235,26 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
         """
         method for searching the title inverted index given a query
         """
-        tokens = self.tokenize(query) #tokenizing the query
+        tokens = self.tokenize_assignment3(query) #tokenizing the query according to assignment 3
         scores = defaultdict(int)
         for token in set(tokens): #going over unique tokens (we use set() so we dont count the same word twice)
             if token in self.title_index.df: # retrieving documents that contain this token in their title
                 
                 for doc_id, _ in self._get_posting_list(self.title_index, token): # we ignore the frequency because binary is what matters
                     scores[doc_id] += 1 #adding 1 to the score of that document
-        return sorted(scores.items(), key=lambda x: x[1], reverse=True) #returning all documents
+        return sorted(scores.items(), key=lambda x: (-x[1], x[0])) #returning all documents
 
     def search_anchor(self, query):
         """
         method for searching the title inverted index given a query
         """
-        tokens = self.tokenize(query) #tokenizing the query
+        tokens = self.tokenize_assignment3(query) #tokenizing the query according to assignment 3
         scores = defaultdict(int)
         for token in set(tokens):  #going over unique tokens (we use set() so we dont count the same word twice)
             if token in self.anchor_index.df: # retrieving documents that contain this token in their title
                 for doc_id, _ in self._get_posting_list(self.anchor_index, token): # we ignore the frequency because binary is what matters
                     scores[doc_id] += 1 #adding 1 to the score of that document
-        return sorted(scores.items(), key=lambda x: x[1], reverse=True) #returning all documents
+        return sorted(scores.items(), key=lambda x: (-x[1], x[0])) #returning all documents
 
     def search(self, query, w_title=1.0, w_anchor=0.5, w_body=1.0, w_pr=0.1,w_pv=0.1, use_cos_sim=False):
         """
@@ -252,6 +270,8 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
         if not tokens: return []
         
         merged_scores = defaultdict(float) #the final scores
+
+        query_counts = Counter(tokens) #same functionality as the search body but without returning top 100
         
         for token in set(tokens): #the title score, same as the the title function without getting top 100 scores
             if token in self.title_index.df:
@@ -273,7 +293,7 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
         if not any(token in self.body_index.df and self.body_index.df[token] <= threshold_df for token in query_counts): #incase no tokens are under the threshold, we increase it
             threshold_df = min(token_dfs.values()) if token_dfs else 80000
         
-        query_counts = Counter(tokens) #same functionality as the search body but without returning top 100
+
 
         query_norm = 0.0
 
@@ -298,11 +318,13 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
                 idf = math.log(self.N / df, 10) #get the idf of the token
                 
                 if use_cos_sim:
+                    
                     w_query = q_tf * idf
                     for doc_id, tf in pl: #for each doc and its tf in the posting list of the token
                         w_doc = tf * idf
                         body_scores[doc_id] += w_query * w_doc #addomg to body_scores, NOT merged_scores yet
                 else:
+                    
                     for doc_id, tf in pl: #for each doc and its tf in the posting list of the token
                         score = (tf / (tf + 1.2)) * idf * q_tf #calculate the following, which is the bm25 lite saturation formula
                         # --- FIX: Add to body_scores, NOT merged_scores yet
