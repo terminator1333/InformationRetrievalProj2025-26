@@ -256,7 +256,7 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
                     scores[doc_id] += 1 #adding 1 to the score of that document
         return sorted(scores.items(), key=lambda x: (-x[1], x[0])) #returning all documents
 
-    def search(self, query, w_title=1.0, w_anchor=0.5, w_body=1.0, w_pr=0.1,w_pv=0.01, use_cos_sim=False):
+    def search(self, query, w_title=1.0, w_anchor=0.5, w_body=1.0, w_pr=0.1,w_pv=0.1, use_cos_sim=False):
         """
         Main search function. Here we execute the search logic by combining scores from 
         multiple indices and the ranking boosters which are pagerank and pageviews
@@ -288,10 +288,10 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
             merged_scores[doc_id] += w_anchor * math.log(1 + count, 10)
 
         body_scores = defaultdict(float) #we need to calculate the body scores separately to combine them later
-        threshold_df = 80000 #skipping very common words to save time
+        threshold_df = 120000 #skipping very common words to save time
         token_dfs = {t: self.body_index.df[t] for t in query_counts if t in self.body_index.df} 
         if not any(token in self.body_index.df and self.body_index.df[token] <= threshold_df for token in query_counts): #incase no tokens are under the threshold, we increase it
-            threshold_df = min(token_dfs.values()) if token_dfs else 80000
+            threshold_df = min(token_dfs.values()) + 1 if token_dfs else 120000
         
 
 
@@ -327,7 +327,7 @@ class SearchBackend: #Backend class to run when running the search_frontend scri
                     
                     for doc_id, tf in pl: #for each doc and its tf in the posting list of the token
                         score = (tf / (tf + 1.2)) * idf * q_tf #calculate the following, which is the bm25 lite saturation formula
-                        # --- FIX: Add to body_scores, NOT merged_scores yet
+                        
                         body_scores[doc_id] += score
         if use_cos_sim and query_norm > 0:
             for doc_id, score in body_scores.items():
